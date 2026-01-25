@@ -1,5 +1,8 @@
 package su.nightexpress.nightcore;
 
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
@@ -8,6 +11,7 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.nightcore.bridge.chat.UniversalChatEventHandler;
+import su.nightexpress.nightcore.bridge.scheduler.AdaptedScheduler;
 import su.nightexpress.nightcore.command.CommandManager;
 import su.nightexpress.nightcore.command.api.NightPluginCommand;
 import su.nightexpress.nightcore.config.FileConfig;
@@ -21,8 +25,6 @@ import su.nightexpress.nightcore.util.wrapper.UniTask;
 import java.util.function.Consumer;
 
 public interface NightCorePlugin extends Plugin {
-
-    //boolean isEngine();
 
     void enable();
 
@@ -108,38 +110,60 @@ public interface NightCorePlugin extends Plugin {
 
     @NotNull MenuRegistry getMenuRegistry();
 
+    @Deprecated
     @NotNull
     default BukkitScheduler getScheduler() {
         return this.getServer().getScheduler();
     }
 
-    @NotNull
-    default PluginManager getPluginManager() {
-        return this.getServer().getPluginManager();
-    }
+    @NotNull AdaptedScheduler scheduler();
 
-    void runTask(@NotNull Runnable runnable);
+    @NotNull PluginManager getPluginManager();
 
+    void runTask(@NotNull Runnable consumer);
+
+    void runTask(Entity entity, @NotNull Runnable consumer);
+
+    void runTask(Location location, @NotNull Runnable consumer);
+
+    void runTask(Chunk chunk, @NotNull Runnable consumer);
+
+    void runTaskAsync(@NotNull Runnable consumer);
+
+    void runTaskLater(@NotNull Runnable consumer, long delay);
+
+    void runTaskLaterAsync(@NotNull Runnable consumer, long delay);
+
+    void runTaskTimer(@NotNull Runnable consumer, long delay, long interval);
+
+    void runTaskTimerAsync(@NotNull Runnable consumer, long delay, long interval);
+
+    @Deprecated
     default void runTask(@NotNull Consumer<BukkitTask> consumer) {
         this.getScheduler().runTask(this, consumer);
     }
 
+    @Deprecated
     default void runTaskAsync(@NotNull Consumer<BukkitTask> consumer) {
         this.getScheduler().runTaskAsynchronously(this, consumer);
     }
 
+    @Deprecated
     default void runTaskLater(@NotNull Consumer<BukkitTask> consumer, long delay) {
         this.getScheduler().runTaskLater(this, consumer, delay);
     }
 
+    @Deprecated
     default void runTaskLaterAsync(@NotNull Consumer<BukkitTask> consumer, long delay) {
         this.getScheduler().runTaskLaterAsynchronously(this, consumer, delay);
     }
 
+    @Deprecated
     default void runTaskTimer(@NotNull Consumer<BukkitTask> consumer, long delay, long interval) {
         this.getScheduler().runTaskTimer(this, consumer, delay, interval);
     }
 
+    @Deprecated
     default void runTaskTimerAsync(@NotNull Consumer<BukkitTask> consumer, long delay, long interval) {
         this.getScheduler().runTaskTimerAsynchronously(this, consumer, delay, interval);
     }

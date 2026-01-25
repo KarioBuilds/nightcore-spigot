@@ -1,6 +1,7 @@
 package su.nightexpress.nightcore.util.placeholder;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import su.nightexpress.nightcore.util.StringUtil;
 
 import java.util.ArrayList;
@@ -12,12 +13,16 @@ import java.util.function.UnaryOperator;
 
 public class PlaceholderContext {
 
+    private final int maxRecursion;
     private final List<PlaceholderResolver>   resolvers;
     private final List<UnaryOperator<String>> postReplacers;
 
-    private PlaceholderContext(@NotNull List<PlaceholderResolver> resolvers, @NotNull List<UnaryOperator<String>> postReplacers) {
+    private PlaceholderContext(@NotNull List<PlaceholderResolver> resolvers,
+                               @NotNull List<UnaryOperator<String>> postReplacers,
+                               int maxRecursion) {
         this.resolvers = resolvers;
         this.postReplacers = postReplacers;
+        this.maxRecursion = maxRecursion;
     }
 
     @NotNull
@@ -33,6 +38,7 @@ public class PlaceholderContext {
 
         for (String original : list) {
             String replaced = this.apply(original);
+            if (!original.isEmpty() && replaced.isEmpty()) continue; // Skip empty repalcements to keep item lore pretty.
 
             StringUtil.splitDelimiters(replaced, result::add);
         }
@@ -42,15 +48,7 @@ public class PlaceholderContext {
 
     @NotNull
     public String apply(@NotNull String string) {
-        String replaced = StringUtil.replacePlaceholders(string, key -> {
-
-            for (PlaceholderResolver resolver : this.resolvers) {
-                String result = resolver.resolve(key);
-                if (result != null) return result;
-            }
-
-            return null;
-        });
+        String replaced = StringUtil.replacePlaceholders(string, new RecursiveResolver(0));
 
         for (UnaryOperator<String> postReplacer : this.postReplacers) {
             replaced = postReplacer.apply(replaced);
@@ -59,11 +57,44 @@ public class PlaceholderContext {
         return replaced;
     }
 
+    private class RecursiveResolver implements PlaceholderResolver {
+
+        private final int currentDepth;
+
+        public RecursiveResolver(int currentDepth) {
+            this.currentDepth = currentDepth;
+        }
+
+        @Override
+        @Nullable
+        public String resolve(@NotNull String key) {
+            String value = null;
+            for (PlaceholderResolver resolver : PlaceholderContext.this.resolvers) {
+                value = resolver.resolve(key);
+                if (value != null) break;
+            }
+
+            if (value == null) return null;
+
+            if (value.indexOf('%') != -1) {
+                if (this.currentDepth >= PlaceholderContext.this.maxRecursion) {
+                    return value;
+                }
+
+                return StringUtil.replacePlaceholders(value, new RecursiveResolver(this.currentDepth + 1));
+            }
+
+            return value;
+        }
+    }
+
     public static class Builder {
 
         private final List<PlaceholderResolver>     resolvers     = new ArrayList<>();
         private final Map<String, Supplier<String>> directValues  = new LinkedHashMap<>();
         private final List<UnaryOperator<String>>   postReplacers = new ArrayList<>();
+
+        private int maxRecursion = 0;
 
         private Builder() {}
 
@@ -74,13 +105,18 @@ public class PlaceholderContext {
                 return supplier == null ? null : supplier.get();
             });
 
-            return new PlaceholderContext(this.resolvers, this.postReplacers);
+            return new PlaceholderContext(this.resolvers, this.postReplacers, this.maxRecursion);
+        }
+
+        @NotNull
+        public Builder maxRecursion(int maxRecursion) {
+            this.maxRecursion = Math.max(0, maxRecursion);
+            return this;
         }
 
         @NotNull
         public <T> Builder with(@NotNull TypedPlaceholder<T> placeholder, @NotNull T source) {
-            this.resolvers.add(placeholder.resolver(source));
-            return this;
+            return this.with(placeholder.resolver(source));
         }
 
         @NotNull
@@ -91,8 +127,7 @@ public class PlaceholderContext {
 
         @NotNull
         public Builder with(@NotNull Map<String, String> staticValues) {
-            this.resolvers.add(staticValues::get);
-            return this;
+            return this.with(staticValues::get);
         }
 
         @NotNull

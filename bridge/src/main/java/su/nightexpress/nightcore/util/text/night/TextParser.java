@@ -147,6 +147,11 @@ public class TextParser {
             // Mark escaped character and move.
             if (letter == ParserUtils.ESCAPE) {
                 isEscaped = true;
+
+                // Keep escaped characters for the STRIP mode to make the String reusable.
+                if (this.mode == ParserMode.STRIP) {
+                    this.eat(letter);
+                }
                 continue;
             }
 
@@ -229,7 +234,6 @@ public class TextParser {
                 isTagEntered = false;
                 this.eat(ParserUtils.OPEN_BRACKET);
                 continue;
-                //this.eat(TagWrapper.simple(bracketsContent).opening());
             }
             else if (this.tagPool.isGoodTag(handler)) {
                 if (this.mode == ParserMode.STRIP) {

@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.geysermc.floodgate.api.FloodgateApi;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import su.nightexpress.nightcore.NightCore;
 import su.nightexpress.nightcore.bridge.wrap.NightProfile;
 import su.nightexpress.nightcore.integration.permission.PermissionBridge;
 import su.nightexpress.nightcore.util.bridge.Software;
@@ -45,7 +46,6 @@ public class Players {
     @NotNull
     public static List<String> playerNames(@Nullable Player viewer) {
         return getOnline().stream().filter(player -> viewer == null || viewer.canSee(player)).map(Player::getName).sorted(String::compareTo).toList();
-        //return playerNames(viewer, true);
     }
 
     @NotNull
@@ -85,8 +85,9 @@ public class Players {
         return Plugins.hasFloodgate() && FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId());
     }
 
+    @Deprecated
     public static boolean isReal(@NotNull Player player) {
-        return getPlayer(player.getUniqueId()) != null;
+        return player.isOnline();
     }
 
     public static void closeDialog(@NotNull Player player) {
@@ -104,6 +105,37 @@ public class Players {
 
     public static void setDisplayName(@NotNull Player player, @NotNull NightComponent name) {
         Software.get().setDisplayName(player, name);
+    }
+
+    @Nullable
+    public static String getPlayerListHeaderSerialized(@NotNull Player player) {
+        return Software.get().getPlayerListHeaderSerialized(player);
+    }
+
+    @Nullable
+    public static String getPlayerListFooterSerialized(@NotNull Player player) {
+        return Software.get().getPlayerListFooterSerialized(player);
+    }
+
+    public static void setPlayerListHeaderFooter(@NotNull Player player, @Nullable String header, @Nullable String footer) {
+        setPlayerListHeaderFooter(player, header == null ? null : NightMessage.parse(header), footer == null ? null : NightMessage.parse(footer));
+    }
+
+    public static void setPlayerListHeaderFooter(@NotNull Player player, @Nullable NightComponent header, @Nullable NightComponent footer) {
+        Software.get().setPlayerListHeaderFooter(player, header, footer);
+    }
+
+    @NotNull
+    public static String getPlayerListNameSerialized(@NotNull Player player) {
+        return Software.get().getPlayerListNameSerialized(player);
+    }
+
+    public static void setPlayerListName(@NotNull Player player, @NotNull String name) {
+        setPlayerListName(player, NightMessage.parse(name));
+    }
+
+    public static void setPlayerListName(@NotNull Player player, @NotNull NightComponent name) {
+        Software.get().setPlayerListName(player, name);
     }
 
     public static void kick(@NotNull Player player, @NotNull String reason) {
@@ -270,7 +302,6 @@ public class Players {
 
     @Deprecated
     public static void sendModernMessage(@NotNull CommandSender sender, @NotNull String message) {
-        //NightMessage.create(message).send(sender);
         sendMessage(sender, message);
     }
 
@@ -289,7 +320,6 @@ public class Players {
 
     @Deprecated
     public static void sendActionBar(@NotNull Player player, @NotNull TextRoot message) {
-        //message.parseIfAbsent().sendActionBar(player);
         sendActionBar(player, message.getString());
     }
 
@@ -316,26 +346,47 @@ public class Players {
 
     public static void dispatchCommands(@NotNull Player player, @NotNull String... commands) {
         for (String command : commands) {
-            dispatchCommand(player, command);
+            dispatchCommand0(player, command);
         }
     }
 
     public static void dispatchCommands(@NotNull Player player, @NotNull List<String> commands) {
         for (String command : commands) {
-            dispatchCommand(player, command);
+            dispatchCommand0(player, command);
         }
     }
 
     public static void dispatchCommand(@NotNull Player player, @NotNull String command) {
+        dispatchCommand0(player, command);
+    }
+
+    private static void dispatchCommand0(@NotNull Player player, @NotNull String command) {
         CommandSender sender = Bukkit.getConsoleSender();
+        boolean usePlayer = false;
+
         if (command.startsWith(PLAYER_COMMAND_PREFIX)) {
             command = command.substring(PLAYER_COMMAND_PREFIX.length());
             sender = player;
+            usePlayer = true;
         }
 
         command = Placeholders.forPlayerWithPAPI(player).apply(command).trim();
 
-        Bukkit.dispatchCommand(sender, command);
+        if (Version.isFolia()) {
+            if (usePlayer) {
+                CommandSender playerSender = sender;
+                String playerCommand = command;
+                NightCore.get().runTask(player, () -> Bukkit.dispatchCommand(playerSender, playerCommand));
+            }
+            else {
+                CommandSender consoleSender = sender;
+                String consoleCommand = command;
+                NightCore.get().runTask(() -> Bukkit.dispatchCommand(consoleSender, consoleCommand));
+            }
+        }
+        else {
+            Bukkit.dispatchCommand(sender, command);
+        }
     }
 
     public static boolean hasEmptyInventory(@NotNull Player player) {
@@ -361,8 +412,8 @@ public class Players {
 
     public static int countItem(@NotNull Player player, @NotNull Predicate<ItemStack> predicate) {
         return Stream.of(player.getInventory().getContents())
-            .filter(item -> item != null && predicate.test(item))
-            .mapToInt(ItemStack::getAmount).sum();
+              .filter(item -> item != null && predicate.test(item))
+              .mapToInt(ItemStack::getAmount).sum();
     }
 
     public static int countItem(@NotNull Player player, @NotNull ItemStack item) {
@@ -428,14 +479,19 @@ public class Players {
     public static void addItem(@NotNull Player player, @NotNull ItemStack itemStack, int amount) {
         if (amount <= 0 || itemStack.getType().isAir()) return;
 
-        World world = player.getWorld();
         ItemStack split = new ItemStack(itemStack);
 
         int realAmount = Math.min(split.getMaxStackSize(), amount);
         split.setAmount(realAmount);
-        player.getInventory().addItem(split).values().forEach(left -> {
-            world.dropItem(player.getLocation(), left);
-        });
+
+        ItemStack copy = split.clone();
+        World world = player.getWorld();
+        if (Version.isFolia()) {
+            NightCore.get().runTask(player, () -> player.getInventory().addItem(copy).values().forEach(left -> world.dropItem(player.getLocation(), left)));
+        }
+        else {
+            player.getInventory().addItem(copy).values().forEach(left -> world.dropItem(player.getLocation(), left));
+        }
 
         amount -= realAmount;
         if (amount > 0) addItem(player, itemStack, amount);

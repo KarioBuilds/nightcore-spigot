@@ -69,6 +69,15 @@ public class FileUtil {
     }
 
     @NotNull
+    public static String getNameWithoutExtension(@NotNull Path path) {
+        String fileName = path.getFileName().toString();
+        int index = fileName.lastIndexOf('.');
+        if (index == -1) return fileName;
+
+        return fileName.substring(0, index);
+    }
+
+    @NotNull
     public static List<File> getConfigFiles(@NotNull String path) {
         return getConfigFiles(path, false);
     }
@@ -122,6 +131,7 @@ public class FileUtil {
     @NotNull
     public static List<Path> findFiles(@NotNull String directoryPath, @NotNull Predicate<Path> predicate) {
         Path path = Paths.get(directoryPath);
+        if (!Files.exists(path)) return Collections.emptyList();
 
         try (Stream<Path> stream = Files.list(path)) {
             return stream.filter(predicate).toList();

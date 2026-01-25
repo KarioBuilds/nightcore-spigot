@@ -16,6 +16,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+@Deprecated
 public abstract class AbstractUserManager<P extends NightPlugin, U extends AbstractUser> extends AbstractManager<P> {
 
     protected final UserdataConfig                config;
@@ -57,7 +58,6 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
     }
 
     public void loadOnline() {
-        //plugin.debug("Load data for online players");
         Players.getOnline().forEach(player -> {
             U user = this.getOrFetch(player.getUniqueId());
             if (user != null) this.cachePermanent(user);
@@ -68,7 +68,6 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
         this.getLoaded().forEach(user -> {
             if (user.isCacheExpired() && !user.isOnline()) {
                 this.unload(user);
-                //plugin.debug("Unloaded expired cached: " + user.getName());
             }
         });
     }
@@ -90,13 +89,11 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
 
         // Force save data on quit + disable auto-save and delay synchronization.
         if (user.isAutoSavePlanned()) {
-            this.plugin.runTaskAsync(task -> this.saveScheduled(Collections.singletonList(user)));
+            this.plugin.runTaskAsync(() -> this.saveScheduled(Collections.singletonList(user)));
         }
         else {
-            this.plugin.runTaskAsync(task -> this.dataManager.saveUserCommons(user));
+            this.plugin.runTaskAsync(() -> this.dataManager.saveUserCommons(user));
         }
-
-        //this.plugin.runTaskAsync(task -> this.saveInDatabase(user));
 
         this.cacheTemporary(user);
     }
@@ -110,7 +107,6 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
         if (users.isEmpty()) return;
 
         this.dataManager.saveUsersFully(users);
-        //this.plugin.debug("Saved " + users.size() + " users");
 
         users.forEach(user -> {
             user.disableAutoSave(); // Reset autosave timestamp.
@@ -154,13 +150,11 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
     public void cacheTemporary(@NotNull U user) {
         user.setCacheFor(this.config.getCacheLifetime());
         this.cache(user);
-        //this.plugin.debug("Temp user cache: " + user.getName());
     }
 
     public void cachePermanent(@NotNull U user) {
         user.setPermanentCache();
         this.cache(user);
-        //this.plugin.debug("Permanent user cache: " + user.getName());
     }
 
     private void cache(@NotNull U user) {
@@ -204,7 +198,6 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
         if (Players.isReal(player)) {
             user = this.getOrFetch(uuid);
             if (user != null) {
-                //new Throwable().printStackTrace();
                 this.plugin.warn("Main thread user data load for '" + uuid + "' aka '" + player.getName() + "'.");
                 return user;
             }
@@ -220,7 +213,6 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
 
         user = this.getFromDatabase(name);
         if (user != null) {
-            //this.plugin.debug("Loaded from DB by Name: " + user.getName());
             this.load(user);
         }
 
@@ -234,7 +226,6 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
 
         user = this.getFromDatabase(uuid);
         if (user != null) {
-            //this.plugin.debug("Loaded from DB by UUID: " + user.getName());
             this.load(user);
         }
 
@@ -290,7 +281,7 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
     }
 
     private void manageUserSynchronized(@NotNull Supplier<U> loadedSupplier, @NotNull Supplier<CompletableFuture<U>> fetchSupplier, @NotNull Consumer<U> consumer) {
-        this.manageUser(loadedSupplier, fetchSupplier, user -> this.plugin.runTask(task -> consumer.accept(user)));
+        this.manageUser(loadedSupplier, fetchSupplier, user -> this.plugin.runTask(() -> consumer.accept(user)));
     }
 
     public void manageUser(@NotNull Player player, Consumer<U> consumer) {
@@ -371,6 +362,6 @@ public abstract class AbstractUserManager<P extends NightPlugin, U extends Abstr
     }
 
     public boolean isLoaded(@NotNull String name) {
-        return this.getLoaded(name) != null;//this.loadedByNameMap.containsKey(name.toLowerCase());
+        return this.getLoaded(name) != null;
     }
 }
