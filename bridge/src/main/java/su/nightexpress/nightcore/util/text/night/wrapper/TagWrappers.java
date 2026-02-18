@@ -1,8 +1,10 @@
 package su.nightexpress.nightcore.util.text.night.wrapper;
 
+import org.bukkit.Material;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.nightcore.bridge.text.event.NightClickEvent;
 import su.nightexpress.nightcore.bridge.text.event.NightHoverEvent;
+import su.nightexpress.nightcore.util.BukkitThing;
 import su.nightexpress.nightcore.util.text.night.ParserUtils;
 import su.nightexpress.nightcore.util.text.night.tag.TagShortNames;
 
@@ -35,6 +37,9 @@ public class TagWrappers {
     public static final Function<String, String>           SPRITE_BLOCKS   = sprite -> TagWrapper.withArguments(TagShortNames.SPRITE, ParserUtils.quoted("blocks"), ParserUtils.quoted(sprite)).opening();
     public static final Function<String, String>           SPRITE_ITEMS    = sprite -> TagWrapper.withArguments(TagShortNames.SPRITE, ParserUtils.quoted("items"), ParserUtils.quoted(sprite)).opening();
     public static final Function<String, String>           SPRITE_GUI    = sprite -> TagWrapper.withArguments(TagShortNames.SPRITE, ParserUtils.quoted("gui"), ParserUtils.quoted(sprite)).opening();
+
+    public static final Function<Material, String> SPRITE_BLOCK = blockType -> SPRITE_BLOCKS.apply("block/" + BukkitThing.getValue(blockType));
+    public static final Function<Material, String> SPRITE_ITEM  = itemType -> SPRITE_ITEMS.apply("item/" + BukkitThing.getValue(itemType));
 
     public static final BiFunction<String, Boolean, String> HEAD     = (data, hat) -> TagWrapper.withArguments(TagShortNames.HEAD, ParserUtils.quoted(data), String.valueOf(hat)).opening();
     public static final Function<String, String>            HEAD_HAT = data -> TagWrapper.withArguments(TagShortNames.HEAD, ParserUtils.quoted(data)).opening();
