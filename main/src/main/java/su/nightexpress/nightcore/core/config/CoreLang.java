@@ -1,15 +1,19 @@
 package su.nightexpress.nightcore.core.config;
 
+import org.bukkit.damage.DamageType;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.nightcore.locale.LangContainer;
 import su.nightexpress.nightcore.locale.LangEntry;
 import su.nightexpress.nightcore.locale.entry.*;
 import su.nightexpress.nightcore.locale.message.MessageData;
+import su.nightexpress.nightcore.util.bridge.RegistryType;
 
 import static su.nightexpress.nightcore.util.Placeholders.*;
 import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.*;
 
 public final class CoreLang implements LangContainer {
+
+    public static final RegistryLocale<DamageType> DAMAGE_TYPE = LangEntry.builder("Bukkit.DamageType").registry(RegistryType.DAMAGE_TYPE);
 
     public static final TextLocale COMMAND_ARGUMENT_NAME_GENERIC     = LangEntry.builder("Command.ArgumentName.Generic").text("value");
     public static final TextLocale COMMAND_ARGUMENT_NAME_TYPE        = LangEntry.builder("Command.ArgumentName.Type").text("type");
